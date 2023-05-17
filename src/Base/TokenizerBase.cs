@@ -21,15 +21,20 @@ namespace BERTTokenizers.Base
         }
 
         
+        // Includes @gevorgeter patch to take only sequenceLength tokens.
         public List<(long InputIds, long TokenTypeIds, long AttentionMask)> Encode(int sequenceLength, params string[] texts)
         {
             var tokens = Tokenize(texts);
+            List<long> padding;
+            
+            if (sequenceLength > tokens.Count)
+                padding = Enumerable.Repeat(0L, sequenceLength - tokens.Count).ToList();
+            else
+                padding = new List<long>();
 
-            var padding = Enumerable.Repeat(0L, sequenceLength - tokens.Count).ToList();
-
-            var tokenIndexes = tokens.Select(token => (long)token.VocabularyIndex).Concat(padding).ToArray();
-            var segmentIndexes = tokens.Select(token => token.SegmentIndex).Concat(padding).ToArray();
-            var inputMask = tokens.Select(o => 1L).Concat(padding).ToArray();
+            var tokenIndexes = tokens.Select(token => (long)token.VocabularyIndex).Concat(padding).Take(sequenceLength).ToArray();
+            var segmentIndexes = tokens.Select(token => token.SegmentIndex).Concat(padding).Take(sequenceLength).ToArray();
+            var inputMask = tokens.Select(o => 1L).Concat(padding).Take(sequenceLength).ToArray();
 
             var output = tokenIndexes.Zip(segmentIndexes, Tuple.Create)
                 .Zip(inputMask, (t, z) => Tuple.Create(t.Item1, t.Item2, z));
